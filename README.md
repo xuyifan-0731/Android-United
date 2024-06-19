@@ -26,7 +26,7 @@ target=android-33
 
 If necessary, modify parts of the paths in the config.ini and hardware-qemu.ini files under `Pixel_7_Pro_API_33.avd` to match your corresponding paths. The method for using the image has not been fully determined yet; a script will be written once it stabilizes.
 
-File download link:
+File download link: https://drive.google.com/drive/folders/1QTq-UcasPoVDyFrQErNzoX9p5ckotdCs?usp=drive_link
 
 Run the following code, then check in Android Studio -> Virtual Devices Manager to see if there is a `Pixel_7_Pro_API_33` image and make sure it can start normally. However, please do not make any changes to the image. Note to modify the avd and sdk paths to the correct paths.
 ```python
