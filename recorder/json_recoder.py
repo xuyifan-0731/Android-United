@@ -1,17 +1,22 @@
-import time
-import os
 import json
+import os
+
 import jsonlines
+
 from utils_mobile.utils import draw_bbox_multi
 from utils_mobile.xml_tool import UIXMLTree
 
 
-def get_compressed_xml(xml_path, type = "plain_text"):
+
+def get_compressed_xml(xml_path, type="plain_text", version="v1"):
     xml_parser = UIXMLTree()
     with open(xml_path, 'r', encoding='utf-8') as f:
         xml_str = f.read()
     try:
         compressed_xml = xml_parser.process(xml_str, level=1, str_type=type)
+        if isinstance(compressed_xml, tuple):
+            compressed_xml = compressed_xml[0]
+
         if type == "plain_text":
             compressed_xml = compressed_xml.strip()
     except Exception as e:
@@ -43,7 +48,10 @@ class JSONRecorder:
         self.xml_history = []
         self.history = []
         self.command_per_step = []
-        self.labeled_current_screenshot_path = None
+        if config.version is None or config.version == "v1":
+            self.xml_compressed_version = "v1"
+        elif config.version == "v2":
+            self.xml_compressed_version = "v2"
 
     def update_response_deprecated(self, controller, response=None, prompt="** screenshot **", need_screenshot=False,
                                    ac_status=False):
@@ -72,6 +80,7 @@ class JSONRecorder:
             "xml": xml_path,
             "ac_xml": ac_xml_path,
             "response": response,
+            # "url": map_url_to_real(page.url),
             "window": controller.viewport_size,
             "target": self.instruction,
             "current_activity": controller.get_current_activity()
@@ -142,7 +151,7 @@ class JSONRecorder:
 
         self.contents.append(step)
 
-    def detect_auto_stop(self):
+    def dectect_auto_stop(self):
         if len(self.contents) <= 5:
             return
         should_stop = True
@@ -157,12 +166,12 @@ class JSONRecorder:
     def get_latest_xml(self):
         if len(self.contents) == 0:
             return None
-        print(self.contents[-1])
+        # print(self.contents[-1])
         if self.contents[-1]['xml'] == "ERROR" or self.contents[-1]['xml'] is None:
             xml_path = self.contents[-1]['ac_xml']
         else:
             xml_path = self.contents[-1]['xml']
-        xml_compressed = get_compressed_xml(xml_path)
+        xml_compressed = get_compressed_xml(xml_path, version=self.xml_compressed_version)
         with open(os.path.join(self.xml_file_path, f"{self.turn_number}_compressed_xml.txt"), 'w',
                   encoding='utf-8') as f:
             f.write(xml_compressed)
@@ -200,4 +209,4 @@ class JSONRecorder:
         self.contents[-1]["current_response"] = rsp
         with jsonlines.open(self.trace_file_path, 'a') as f:
             f.write(self.contents[-1])
-        self.detect_auto_stop()
+        self.dectect_auto_stop()

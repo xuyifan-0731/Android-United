@@ -1,17 +1,16 @@
-import os, json, sys, time, re, math, random, datetime, argparse, requests
-from typing import List, Dict, Tuple, Union, Optional, Any, Callable, Iterable, TypeVar, Generic, Sequence, Mapping, Set, Deque
-from openai import OpenAI
-import traceback
+from typing import List, Dict, Any
+
 import backoff
+import requests
+from openai import OpenAI
+
 from agent.utils import *
-from templates.text_only_mobile import *
 from templates.android_screenshot_template import *
 
 
 def handle_giveup(details):
     print(
-        "Backing off {wait:0.1f} seconds afters {tries} tries calling function {target} "
-        "with args {args} and kwargs {kwargs}"
+        "Backing off {wait:0.1f} seconds afters {tries} tries calling fzunction {target} with args {args} and kwargs {kwargs}"
         .format(**details))
 
 
@@ -42,11 +41,10 @@ class Agent:
         raise NotImplementedError
 
 
-
 class OpenAIAgent(Agent):
     def __init__(
             self,
-            api_key: str,
+            api_key: str = '',
             api_base: str = '',
             model_name: str = '',
             max_new_tokens: int = 16384,
@@ -54,16 +52,16 @@ class OpenAIAgent(Agent):
             top_p: float = 0.7,
             **kwargs
     ) -> None:
-        if api_base != '':
-            self.client = OpenAI(api_key=api_key, base_url=api_base)
-        else:
-            self.client = OpenAI(api_key=api_key)
+        self.client = OpenAI(api_key=api_key, base_url=api_base)
+        # openai.api_base = api_base
+        # openai.api_key = api_key
         self.model_name = model_name
         self.max_new_tokens = max_new_tokens
         self.temperature = temperature
         self.top_p = top_p
         self.kwargs = kwargs
         self.name = "OpenAIAgent"
+
 
     @backoff.on_exception(
         backoff.expo, Exception,
@@ -105,3 +103,32 @@ class OpenAIAgent(Agent):
     def system_prompt(self, instruction) -> str:
         return SYSTEM_PROMPT_ANDROID_MLLM_DIRECT + f"\n\nTask Instruction: {instruction}"
 
+
+class HTTPAgent(Agent):
+    def __init__(
+            self,
+            url: str,
+            headers: Dict[str, Any] = {},
+            body: Dict[str, Any] = {},
+            return_format: str = "{response[choices][0][message][content]}"
+    ) -> None:
+        self.url = url
+        self.headers = headers
+        self.body = body
+        self.return_format = return_format
+
+    def update_messages(self, body: Dict[str, Any], messages: List[Dict[str, Any]]):
+        body.update({"messages": messages})
+        return body
+
+    @backoff.on_exception(
+        backoff.expo, Exception,
+        on_backoff=handle_backoff,
+        on_giveup=handle_giveup,
+    )
+    def act(self, messages: List[Dict[str, Any]]):
+        body = self.update_messages({**self.body}, messages)
+        response = requests.post(
+            self.url, headers=self.headers, body=body
+        )
+        return self.return_format.format(response=response)

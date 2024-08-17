@@ -105,7 +105,6 @@ REMEMBER:
 - To complete the task, explore the app fully, i.e., tap more on different elements of the app
 '''
 
-
 # Task Instruction: {task_desc}\n\nRound 0\n\n<|user|>\n# Observation: \n{xml_json}\n\n<|assistant|>\n
 
 SYSTEM_PROMPT_ANDROID_TEXT_EXPLORATION_V2 = '''# Setup
@@ -270,7 +269,6 @@ REMEMBER:
 - To accomplish the task, try switching to as many different pages as you can, and don't stay on the same page too often, based on historical conversation information.
 - To complete the task, explore the app fully, i.e., tap more on different elements of the app
 '''
-
 
 SYSTEM_PROMPT_ANDROID_TEXT_EXPLORATION_V3 = '''# Setup
 You are a professional android operation agent assistant that can fulfill user's high-level instructions. Given the XML information of the android screenshot at each step, you plan operations in python-style pseudo code using provided functions, or customize functions (if necessary) and then provide their implementations. 

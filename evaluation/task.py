@@ -1,15 +1,13 @@
-import jsonlines
-
-from typing import Dict, Callable, Type, Tuple, List, Any, Union, Iterable, Generic, TypeVar
-import os
-import json
 from collections import defaultdict
-
-from utils_mobile.xml_tool import UIXMLTree
-from evaluation.utils import *
-from definition import *
+from typing import Generic, TypeVar
 from PIL import Image
+
+import jsonlines
 import numpy as np
+
+from evaluation.definition import *
+from evaluation.utils import *
+from utils_mobile.xml_tool import UIXMLTree
 
 T_INPUT = TypeVar('T_INPUT')
 T_OUTPUT = TypeVar('T_OUTPUT')
@@ -56,7 +54,7 @@ def compute_image_similarity(image_paths):
     for path in image_paths:
         try:
             image_list.append(np.array(Image.open(path)))
-        except Exception:
+        except Exception as e:
             image_list.append(np.zeros((1, 1, 3)))
 
     simi = []
@@ -73,14 +71,14 @@ def compute_image_similarity(image_paths):
 
             if similarity > 0.999:
                 sum_simi += 1
-        except Exception:
+        except Exception as e:
             simi.append(0)
 
     return simi, sum_simi
 
 
 class Evaluation_Task(Generic[T_INPUT, T_OUTPUT, T_TARGET]):
-    def __init__(self, config, traces, detail=False):
+    def __init__(self, config, traces, glm4_key, detail=False):
         self.config = config
         assert self.config is not None, "Task config is required."
         self.name = self.config.APP
@@ -89,12 +87,14 @@ class Evaluation_Task(Generic[T_INPUT, T_OUTPUT, T_TARGET]):
         self.traces = traces
         self.all_result = []
         self.show_detail_metrics = detail
+        self.glm4_key = glm4_key
+        self.total_tasks_num = 138  # TODO: change this number if the number of all tasks changes
         if self.show_detail_metrics:
             self.additional_metrics = defaultdict(dict)
-            with open("evaluation/human_ground_turth/ground_truth_length.json") as f:
+            with open("evaluation/tasks/human_ground_turth/ground_truth_length.json") as f:
                 self.length_gt = json.load(f)
 
-    def evaluate(self):
+    def evaluate(self) -> Dict[str, Any]:
         for task in self.task_list:
             try:
                 assert task.get('task_id') in self.metrics, f"No valid function mapped for {task.get('task_id')}"
@@ -102,7 +102,7 @@ class Evaluation_Task(Generic[T_INPUT, T_OUTPUT, T_TARGET]):
                 print(f"No valid function mapped for {task.get('task_id')}")
                 continue
             task_id = task.get('task_id')
-            metric = self.metrics[task_id]()
+            metric = self.metrics[task_id](self.glm4_key)
             final_result = {"complete": False}
             if task_id not in self.traces:
                 print(f"Trace for task '{task_id}' not found.")
@@ -117,7 +117,6 @@ class Evaluation_Task(Generic[T_INPUT, T_OUTPUT, T_TARGET]):
             num_repeat = 0
             last_action = None
 
-            print(f"---------------Evaluating task '{task_id}'----------------------")
             with jsonlines.open(self.traces[task_id]['trace_file']) as reader:
                 trace_root = self.traces[task_id]['trace_root']
                 for line in reader:
@@ -175,10 +174,10 @@ class Evaluation_Task(Generic[T_INPUT, T_OUTPUT, T_TARGET]):
         self.additional_metrics["RRR"][task["task_id"]] = RRR
 
         # Final Task Ratio
-        if traces[-1]["parsed_action"]["operation"] == "finish":
-            self.additional_metrics["final_task_ratio"][task["task_id"]] = 1
-        else:
-            self.additional_metrics["final_task_ratio"][task["task_id"]] = 0
+        # if traces[-1]["parsed_action"]["operation"] == "finish":
+        # self.additional_metrics["final_task_ratio"][task["task_id"]] = 1
+        # else:
+        # self.additional_metrics["final_task_ratio"][task["task_id"]] = 0
 
         # Reasonable Operation Ratio
         simi, sum_simi = compute_image_similarity(all_images)
@@ -209,7 +208,7 @@ class Evaluation_Task(Generic[T_INPUT, T_OUTPUT, T_TARGET]):
 
         for result in self.all_result:
             app = result["task_id"].split("_")[0]
-            if result["result"].get("complete") is True:
+            if result["result"].get("complete") == True:
                 complete_metric[app].append(1)
                 partial_metric[app].append(1)
             else:
@@ -232,10 +231,11 @@ class Evaluation_Task(Generic[T_INPUT, T_OUTPUT, T_TARGET]):
                 writer.write(output_dir)
 
 
-class SingleTask:
-    def __init__(self):
+class SingleTask():
+    def __init__(self, glm4_key):
         self.metric_type = ""
         self.final_ground_truth = None
+        self.glm4_key = glm4_key
 
     def check_answer(self, line):
         if line["parsed_action"].get("action") != "finish" and line["parsed_action"].get("type") != "finish":
@@ -250,7 +250,7 @@ class SingleTask:
             else:
                 model_answer = line["parsed_action"]["input"]
             ground_truth = self.final_ground_truth
-            if detect_answer(question, model_answer, ground_truth):
+            if detect_answer(question, model_answer, ground_truth, self.glm4_key):
                 return True
             else:
                 return False

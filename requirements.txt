@@ -31,3 +31,5 @@ Levenshtein
 zhipuai
 xmltodict
 google.auth
+docker
+fuzzywuzzy

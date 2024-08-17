@@ -1,9 +1,13 @@
-import yaml
 import importlib
+import os
+from dataclasses import dataclass
+from typing import Optional
+
+import yaml
 
 
 class AppConfig:
-    def __init__(self, file_path, output_dir = None):
+    def __init__(self, file_path, output_dir=None):
         self.file_path = file_path
         self.data = None
         self.metrics = {}
@@ -25,8 +29,8 @@ class AppConfig:
                         task_id = task.get('task_id')
                         metric_type = task.get('metric_type')
                         if func_name:
-                            app_module_name = func_name.split('.')[1]
-                            module = importlib.import_module(f'evaluation.{app_module_name}')
+                            app_module_name = func_name.split('.')[-1]
+                            module = importlib.import_module(f'evaluation.tasks.{app_module_name}')
                             if hasattr(module, 'function_map') and task_id in module.function_map:
                                 task['metric_func'] = module.function_map[task_id]
                                 self.metrics[task_id] = task['metric_func']
@@ -53,4 +57,32 @@ class AppConfig:
     def get_metrics(self):
         return self.metrics
 
+@dataclass
+class TaskConfig:
+    save_dir: str
+    max_rounds: int
+    mode: Optional[float] = None
+    request_interval: Optional[float] = None
+    task_id: Optional[str] = None
+    avd_name: Optional[str] = None
+    avd_log_dir: Optional[str] = None
+    avd_base: Optional[str] = None
+    android_sdk_path: Optional[str] = None
+    is_relative_bbox: Optional[bool] = False
+    docker: Optional[bool] = False
+    docker_args: Optional[dict] = None
+    sample: Optional[bool] = False
+    show_avd: Optional[bool] = False
+    version: Optional[str] = None
 
+    def subdir_config(self, subdir: str):
+        new_config = self.__dict__.copy()
+        new_config["save_dir"] = os.path.join(self.save_dir, subdir)
+        # new_config["task_id"] = task_id
+        return TaskConfig(**new_config)
+
+    def add_config(self, config):
+        new_config = self.__dict__.copy()
+        for key, values in config.items():
+            new_config[key] = values
+        return TaskConfig(**new_config)

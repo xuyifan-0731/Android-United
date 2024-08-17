@@ -144,7 +144,7 @@ REMEMBER:
 - On a dropdown element (Calendar, Nationality, Language, etc.), first try directly typing in the option you want.
 '''
 
-# - If you think a page is still loading or still playing animation, and you want to wait a while, use "Wait" action.
+# - If you think a page is still loading or still playing animation and you want to wait a while, use "Wait" action.
 
 SYSTEM_PROMPT_ANDROID_TEMPLATE = '''# Setup
 You are a professional android operation agent assistant that can fulfill user's high-level instructions. Given screenshot of the android screenshot at each step, you plan operations in python-style pseudo code using provided functions, or customize functions (if necessary) and then provide their implementations. 
@@ -544,8 +544,9 @@ If tap operation is not working, you can try long press operation.
 You can only take one action at a time, so please directly call the function.
 '''
 
-
 import os
+
+
 def get_template_prompt(prompt, app):
     template_base = "templates/one_shot_prompt"
     templates = os.listdir(template_base)
@@ -556,5 +557,4 @@ def get_template_prompt(prompt, app):
                 template = f.read()
                 templates_dict[t.split(".txt")[0]] = template
 
-    return prompt.format(example = templates_dict.get(app, default_example))
-
+    return prompt.format(example=templates_dict.get(app, default_example))

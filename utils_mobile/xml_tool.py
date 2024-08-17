@@ -1,12 +1,10 @@
-from collections import deque
-from typing import Dict
-
-from lxml import etree
-import xmltodict
+import copy
 import json
 import uuid
-import copy
-import re
+from typing import Dict
+
+import xmltodict
+from lxml import etree
 
 from utils_mobile.specialCheck import *
 
@@ -21,7 +19,6 @@ def get_words_in_certain_length(text, length=10):
 
 class UIXMLTree:
     def __init__(self):
-        self.xml_string = None
         self.root = None
         self.cnt = None
         self.node_to_xpath: Dict[str, list[str]] = {}
@@ -38,7 +35,7 @@ class UIXMLTree:
         self.merge_switch = False
         self.all_bounds = {}
 
-    def process(self, xml_string, level=1, str_type="json", remove_system_bar=True, use_bounds=False,
+    def process(self, xml_string, app_info=None, level=1, str_type="json", remove_system_bar=True, use_bounds=False,
                 merge_switch=False):
         self.xml_string = xml_string
         self.root = etree.fromstring(xml_string.encode('utf-8'))
@@ -126,6 +123,7 @@ class UIXMLTree:
             }
             self.append_node(
                 parent=parent,
+                index='0',
                 attrib_dict=attrib_dict,
             )
         return result
@@ -648,5 +646,3 @@ class UIXMLTree:
             if not self.same_subtree(child1[i], child2[i]):
                 return False
         return True
-
-

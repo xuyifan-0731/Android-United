@@ -47,9 +47,11 @@ apps_dict = {
     "Cantook": "com.aldiko.android",
     "PiMusicPlayer": "com.Project100Pi.themusicplayer",
     "Firefox": "org.mozilla.firefox",
+    "simple_notepad": "org.mightyfrog.android.simplenotepad",
+    "tasks": "com.tarento.tasks",
+    "vlc": "org.videolan.vlc",
 }
 
-from typing import Dict
 from Levenshtein import distance
 
 
@@ -85,3 +87,7 @@ def find_app(input_str: str) -> str:
     inverse_dict = {v: k for k, v in apps_dict.items()}
     return find_closest(input_str, inverse_dict)
 
+
+if __name__ == "__main__":
+    print(find_package("chrome"))
+    print(find_app("com.Project100Pi.themusicplayer"))

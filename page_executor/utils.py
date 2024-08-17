@@ -1,7 +1,7 @@
-import requests
-import cv2
-
 import textwrap
+
+import cv2
+import requests
 
 
 def _add_text(instruction, image):
@@ -22,9 +22,9 @@ def _add_text(instruction, image):
         y_new = y + i * int(cv2.getTextSize(line, font, font_scale, font_thickness)[0][1] + line_spacing)
 
         # Drawing Text Background
-        textsize = cv2.getTextSize(line, font, font_scale, font_thickness)[0]
-        text_box_y = y_new - textsize[1] - 5  # adjust 5 for better alignment
-        cv2.rectangle(image, (x, text_box_y), (screen_width, text_box_y + textsize[1] + 10), (0, 0, 0), -1)
+        textSize = cv2.getTextSize(line, font, font_scale, font_thickness)[0]
+        text_box_y = y_new - textSize[1] - 5  # adjust 5 for better alignment
+        cv2.rectangle(image, (x, text_box_y), (screen_width, text_box_y + textSize[1] + 10), (0, 0, 0), -1)
 
         # Drawing Text
         cv2.putText(image, line, (x, y_new), font, font_scale, (255, 255, 255), font_thickness, cv2.LINE_AA)

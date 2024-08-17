@@ -1,5 +1,8 @@
-from definition import *
-from utils_mobile.xml_tool import UIXMLTree
+import os
+import shutil
+import socket
+import subprocess
+
 
 def find_matching_subtrees(tree, search_str):
     """
@@ -14,6 +17,7 @@ def find_matching_subtrees(tree, search_str):
     Returns:
     - list: A list of dictionaries, each representing a matching subtree.
     """
+    matched_subtrees = []
 
     # Helper function to recursively search through the tree
     def search_tree(current_tree):
@@ -77,54 +81,121 @@ def find_subtrees_of_parents_with_key(tree, search_key):
     return parent_subtrees
 
 
-
-def get_compressed_xml(xml_path):
-    xml_parser = UIXMLTree()
-    with open(xml_path, 'r', encoding='utf-8') as f:
-        xml_str = f.read()
+def get_avd_serial_number(avd_name):
     try:
-        compressed_xml = xml_parser.process(xml_str, level=1, str_type="json").strip()
+        # 获取所有连接的设备及其序列号
+        result = subprocess.run(['adb', 'devices'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        devices_output = result.stdout
+
+        # 提取设备序列号
+        devices = [line.split()[0] for line in devices_output.splitlines() if 'device' in line and 'List' not in line]
+
+        # 遍历设备，查找对应的AVD名字
+        for device in devices:
+            result = subprocess.run(['adb', '-s', device, 'emu', 'avd', 'name'], stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, text=True)
+            avd_output = result.stdout.replace("OK", "").strip()
+            # print(avd_output.replace("OK", "").strip())
+
+            if avd_output == avd_name:
+                return device
+
+        return None
     except Exception as e:
-        compressed_xml = None
-        print(f"XML compressed failure: {e}")
-    return compressed_xml
+        print(f"Error: {e}")
+        return None
 
-def get_xml_list(xml_path):
-    xml_parser = UIXMLTree()
-    with open(xml_path, 'r', encoding='utf-8') as f:
-        xml_str = f.read()
-    try:
-        compressed_xml = xml_parser.process(xml_str, level=1, str_type="list")
-    except Exception as e:
-        compressed_xml = None
-        print(f"XML compressed failure: {e}")
-    return compressed_xml
-
-def dump_xml(controller, device_name = None, accessiblity = False, task_id = "0"):
-    save_dir = "logs/auto-test/xmls"
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-
-    if accessiblity:
-        controller.get_ac_xml(prefix=task_id, save_dir=save_dir)
-    else:
-        controller.get_xml(prefix=task_id, save_dir=save_dir)
-    xml_path = os.path.join(save_dir, f"{task_id}.xml")
-    xml_compressed = get_compressed_xml(xml_path)
-    print(xml_compressed)
-    return json.loads(xml_compressed)
-
-def get_current_compressed_xml():
-    controller, device_name = get_mobile_device_and_name()
-    output_json = dump_xml(controller, device_name, False, "0")
-    return output_json
 
 def extract_bounds(node, path=""):
     result = []
     for key, value in node.items():
-        current_path = f"{path}{key} "
+        current_path = key
+        # 如果要展示完整路径，可以改成{path}{key}
         if isinstance(value, dict):
             result.extend(extract_bounds(value, current_path))
         elif key == "bounds":
             result.append({"key": path.strip(), "value": value})
     return result
+
+
+from utils_mobile.and_controller import list_all_devices, execute_adb
+
+
+def get_adb_device_name(avd_name=None):
+    device_list = list_all_devices()
+    for device in device_list:
+        command = f"adb -s {device} emu avd name"
+        ret = execute_adb(command, output=False)
+        ret = ret.split("\n")[0]
+        if ret == avd_name:
+            return device
+    return None
+
+
+def find_free_ports(start_port=6060):
+    def is_port_free(port):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(('localhost', port)) != 0
+
+    port = start_port
+    while True:
+        if is_port_free(port):
+            return port
+        port += 1
+
+
+def clone_avd(src_avd_name, tar_avd_name, android_avd_home):
+    """
+    Clone the source AVD to the target AVD.
+
+    Parameters:
+    - src_avd_name: The name of the source AVD folder.
+    - tar_avd_name: The name of the target AVD folder.
+    - android_avd_home: The path to the .android/avd directory.
+
+    This function copies the source AVD folder and its .ini file to a new target AVD
+    and updates the paths inside the .ini files accordingly.
+    """
+
+    # Paths for source and target AVD directories and .ini files
+    src_avd_dir = os.path.join(android_avd_home, src_avd_name + '.avd')
+    tar_avd_dir = os.path.join(android_avd_home, tar_avd_name + '.avd')
+    src_ini_file = os.path.join(android_avd_home, src_avd_name + '.ini')
+    tar_ini_file = os.path.join(android_avd_home, tar_avd_name + '.ini')
+
+    # Copy the AVD folder
+    print(f"====Copying the AVD folder from {src_avd_dir} to {tar_avd_dir}====")
+    print("This may take a while...")
+    if not os.path.exists(tar_avd_dir):
+        shutil.copytree(src_avd_dir, tar_avd_dir)
+
+    # Copy the .ini file and modify it for the new AVD
+    with open(src_ini_file, 'r') as src_ini, open(tar_ini_file, 'w') as tar_ini:
+        for line in src_ini:
+            tar_ini.write(line.replace(src_avd_name, tar_avd_name))
+
+    # Update paths inside the target AVD's .ini files
+    for ini_name in ['config.ini', 'hardware-qemu.ini']:
+        ini_path = os.path.join(tar_avd_dir, ini_name)
+        if os.path.exists(ini_path):
+            with open(ini_path, 'r') as file:
+                lines = file.readlines()
+            with open(ini_path, 'w') as file:
+                for line in lines:
+                    # Update paths and AVD name/ID
+                    new_line = line.replace(src_avd_name, tar_avd_name)
+                    file.write(new_line)
+
+    # Update the snapshots' hardware.ini file if it exists
+    snapshots_hw_ini = os.path.join(tar_avd_dir, 'snapshots', 'default_boot', 'hardware.ini')
+    if os.path.exists(snapshots_hw_ini):
+        with open(snapshots_hw_ini, 'r') as file:
+            lines = file.readlines()
+        with open(snapshots_hw_ini, 'w') as file:
+            for line in lines:
+                # Update AVD name/ID
+                new_line = line.replace(src_avd_name, tar_avd_name)
+                file.write(new_line)
+
+    return tar_avd_dir, tar_ini_file
+

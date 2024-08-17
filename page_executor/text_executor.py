@@ -1,16 +1,11 @@
-import os
-import re
-
-from .utils import get_relative_bbox_center, call_dino, plot_bbox
-from .api_utils import screenshot_satisfies
-
-import base64
-import time
 import inspect
 import json
+import re
+import time
 from functools import partial
+
 from templates.packages import find_package
-from definition import get_completion_glm4
+from .utils import call_dino, plot_bbox
 
 
 def remove_leading_zeros_in_string(s):
@@ -35,7 +30,7 @@ class TextOnlyExecutor:
         self.is_finish = False
         self.device_pixel_ratio = None
         self.latest_xml = None
-        self.glm4_key = config.glm4_key
+        # self.glm4_key = config.glm4_key
 
         # self.device_pixel_ratio = self.page.evaluate("window.devicePixelRatio")
 
@@ -64,6 +59,12 @@ class TextOnlyExecutor:
         local_context = self.__get_class_methods__()
         local_context.update(**{'self': self})
         print(code_snippet.strip())
+        if len(code_snippet.split("\n")) > 1:
+            for code in code_snippet.split("\n"):
+                if "Action: " in code:
+                    code_snippet = code
+                    break
+
         code = remove_leading_zeros_in_string(code_snippet.strip())
         exec(code, {}, local_context)
         return self.current_return
@@ -88,7 +89,7 @@ class TextOnlyExecutor:
         return methods_dict
 
     def update_screenshot(self, prefix=None, suffix=None):
-        #time.sleep(2)
+        # time.sleep(2)
         if prefix is None and suffix is None:
             self.current_screenshot = f"{self.screenshot_dir}/screenshot-{time.time()}.png"
         elif prefix is not None and suffix is None:
@@ -127,6 +128,7 @@ class TextOnlyExecutor:
             self.call_api(**kwargs)
         else:
             raise NotImplementedError()
+        # self.__update_screenshot__() # update screenshot 全部移到recoder内
 
     def get_relative_bbox_center(self, instruction, screenshot):
         # 获取相对 bbox
@@ -141,8 +143,8 @@ class TextOnlyExecutor:
 
         # 点击计算出的中心点坐标
         # print(center_x, center_y)
-        plot_bbox([int(center_x - width_x / 2), int(center_y - height_y / 2), int(width_x), int(height_y)],
-                  screenshot, instruction)
+        plot_bbox([int(center_x - width_x / 2), int(center_y - height_y / 2), int(width_x), int(height_y)], screenshot,
+                  instruction)
 
         return (int(center_x), int(center_y)), relative_bbox
 
@@ -171,7 +173,7 @@ class TextOnlyExecutor:
     def swipe(self, element=None, **kwargs):
         if element is None:
             center_x, center_y = self.controller.width // 2, self.controller.height // 2
-        else:
+        elif element is not None:
             if isinstance(element, list) and len(element) == 4:
                 center_x = (element[0] + element[2]) / 2
                 center_y = (element[1] + element[3]) / 2
@@ -227,6 +229,7 @@ class TextOnlyExecutor:
         self.current_return = {"operation": "do", "action": 'Launch',
                                "kwargs": {"package": package}}
 
+    '''
     def call_api(self, **kwargs):
         assert "instruction" in kwargs, "instruction is required for call_api"
         glm4_template = "你需要根据以下化简版本的XML数据,对提问进行回答。你需要直接回答问题。\n\nXML数据：\n\n{xml_compression}\n\n提问:{question}\n\n提示：你的输出应当不超过100字"
@@ -245,4 +248,4 @@ class TextOnlyExecutor:
             response = get_completion_glm4(instruction, self.glm4_key)
             self.current_return = {"operation": "do", "action": 'Call_API',
                                    "kwargs": {"instruction": instruction, "response": response,
-                                              "with_screen_info": False}}
+                                              "with_screen_info": False}}'''

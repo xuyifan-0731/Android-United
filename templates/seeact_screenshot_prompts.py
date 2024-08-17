@@ -1,7 +1,3 @@
-import os, json, sys, time, re, math, random, datetime, argparse, requests
-from typing import List, Dict, Tuple, Union, Optional, Any, Callable, Iterable, TypeVar, Generic, Sequence, Mapping, \
-    Set, Deque
-
 QUERY_SYSTEM_PROMPT = """
 You are assisting humans doing smartphone navigation tasks step by step. At each stage, you can see the smartphone by a screenshot and know the previous actions before the current step decided by yourself that have been executed for this task through recorded history. You need to decide on the first following action to take.
 

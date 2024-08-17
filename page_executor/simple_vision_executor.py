@@ -1,9 +1,7 @@
-import os
 import time
-import cv2
+import xml.etree.ElementTree as ET
 
 from page_executor.text_executor import TextOnlyExecutor
-import xml.etree.ElementTree as ET
 
 
 class AndroidElement:
@@ -80,7 +78,9 @@ class VisionExecutor(TextOnlyExecutor):
         self.is_finish = False
         self.device_pixel_ratio = None
         self.latest_xml = None
-        self.glm4_key = config.glm4_key
+        # self.glm4_key = config.glm4_key
+
+        # self.device_pixel_ratio = self.page.evaluate("window.devicePixelRatio")
 
     def set_elem_list(self, xml_path):
         clickable_list = []
@@ -106,6 +106,7 @@ class VisionExecutor(TextOnlyExecutor):
         self.elem_list = elem_list
 
     def tap(self, index):
+        assert 0 < index <= len(self.elem_list), f"Tap Index {index} out of range"
         tl, br = self.elem_list[index - 1].bbox
         x, y = (tl[0] + br[0]) // 2, (tl[1] + br[1]) // 2
         ret = self.controller.tap(x, y)

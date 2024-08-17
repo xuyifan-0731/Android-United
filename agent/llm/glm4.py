@@ -1,18 +1,19 @@
-from agent.model import *
 from zhipuai import ZhipuAI
+
+from agent.model import *
+
 
 class GLM4Agent(OpenAIAgent):
     def __init__(
             self,
-            model_name: str = '',
+            model_name: str,
+            model_key: str,
             max_new_tokens: int = 16384,
             temperature: float = 0,
             top_p: float = 0.7,
             **kwargs
     ) -> None:
-        self.glm4_key = "your glm sdk key"
-        # openai.api_base = api_base
-        # openai.api_key = api_key
+        self.glm4_key = model_key
         self.client = ZhipuAI(api_key=self.glm4_key)
         self.model_name = model_name
         self.max_new_tokens = max_new_tokens
@@ -33,6 +34,7 @@ class GLM4Agent(OpenAIAgent):
             messages=messages,
         )
         return response.choices[0].message.content
+
 
 if __name__ == "__main__":
     agent = GLM4Agent()

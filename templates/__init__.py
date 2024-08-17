@@ -1,3 +1,3 @@
-from .android_screenshot_template import SYSTEM_PROMPT_ANDROID_MULTI as ANDROID_BASIC_PROMPT
-from .android_screenshot_template import SYSTEM_PROMPT_ANDROID_TEMPLATE as ANDROID_TEMPLATE_PROMPT
-from .android_screenshot_template import get_template_prompt
+from .android_screenshot_template import *
+from .seeact_screenshot_prompts import *
+from .text_only_mobile import *
